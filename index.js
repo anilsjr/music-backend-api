@@ -9,6 +9,8 @@ const asyncPool = require('./asyncPool');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+var itemConut = 0;
+
 // Helper function to extract the real URL from DuckDuckGo redirect links
 function extractRealUrl(duckUrl) {
     try {
@@ -37,7 +39,7 @@ async function searchAndScrapeAudioLinks(query) {
         const $ = cheerio.load(data);
         const resultLinks = [];
         // DuckDuckGo result links have class 'result__a' or are inside '.result__url'
-        $('a.result__a').each((_, el) => {
+        $('a.result__a').slice(0, 50).each((_, el) => {
             const href = $(el).attr('href');
             if (href && !href.startsWith('/y.js')) {
                 const realUrl = extractRealUrl(href);
