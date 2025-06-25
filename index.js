@@ -4,6 +4,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { URL } = require('url');
+const asyncPool = require('./asyncPool');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,8 +46,8 @@ async function searchAndScrapeAudioLinks(query) {
         });
         console.log('DuckDuckGo real result links:', resultLinks);
         const audioLinks = [];
-        // Parallel fetching of all result links
-        await Promise.all(resultLinks.map(async (url) => {
+        // Limit concurrency to 5 requests at a time
+        await asyncPool(5, resultLinks, async (url) => {
             try {
                 const page = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
                 const $$ = cheerio.load(page.data);
@@ -92,7 +93,7 @@ async function searchAndScrapeAudioLinks(query) {
             } catch (err) {
                 console.log('Error scraping', url, err.message);
             }
-        }));
+        });
         const seen = new Set();
         let uniqueLinks = audioLinks.filter(item => {
             if (seen.has(item.link)) return false;
