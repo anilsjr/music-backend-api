@@ -24,7 +24,7 @@ function extractRealUrl(duckUrl) {
 
 // Helper function to search and scrape for audio links (mp3, mp4, m4a) from search results
 async function searchAndScrapeAudioLinks(query) {
-    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query + ' song '+ ' mp3 mp4 m4a download')}`;
+    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query + ' song ' + ' mp3 mp4 m4a download')}`;
     try {
         const { data } = await axios.get(searchUrl, {
             headers: {
@@ -45,16 +45,18 @@ async function searchAndScrapeAudioLinks(query) {
         });
         console.log('DuckDuckGo real result links:', resultLinks);
         const audioLinks = [];
-        for (let i = 0; i < resultLinks.length && audioLinks.length < 50; i++) {
+        for (let i = 0; i < resultLinks.length; i++) {
             const url = resultLinks[i];
             try {
                 const page = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
                 const $$ = cheerio.load(page.data);
+                const pageTitle = $$('title').first().text() || '';
                 $$('a').each((_, a) => {
                     let ahref = $$(a).attr('href');
                     if (
                         ahref &&
                         (ahref.match(/\.(mp3|mp4|m4a)($|\?)/i) ||
+                            ahref.match(/\/download\/type/i) ||
                             ahref.match(/\/download\//i))
                     ) {
                         // Convert relative to absolute
@@ -63,7 +65,7 @@ async function searchAndScrapeAudioLinks(query) {
                                 ahref = new URL(ahref, url).href;
                             } catch (e) { }
                         }
-                        audioLinks.push(ahref);
+                        audioLinks.push({ link: ahref, title: pageTitle });
                     }
                 });
                 // Also check for <audio> and <source> tags
@@ -81,27 +83,28 @@ async function searchAndScrapeAudioLinks(query) {
                                 src = new URL(src, url).href;
                             } catch (e) { }
                         }
-                        audioLinks.push(src);
+                        audioLinks.push({ link: src, title: pageTitle });
                     }
                 });
             } catch (err) {
                 console.log('Error scraping', url, err.message);
             }
         }
-        // Remove duplicates and limit to 50 results
-        let uniqueLinks = [...new Set(audioLinks)];
+        const seen = new Set();
+        let uniqueLinks = audioLinks.filter(item => {
+            if (seen.has(item.link)) return false;
+            seen.add(item.link);
+            return true;
+        });
         console.log('Found audio links:', uniqueLinks);
         // Sort links by priority: 1. song query, 2. pagalworld, 3. raagmad, 4. jio, 5. /download/type, 6. /download/
-        function getPriority(link) {
-            const lower = link.toLowerCase();
-            if (lower.includes('pagalworld')) return 1;
-            if (lower.includes('raagmad')) return 2;
-            if (lower.includes('pagaiworld')) return 3;
-            if (lower.includes('musify')) return 4;
-            if (lower.includes('jio')) return 5;
-            if (lower.includes(query.toLowerCase())) return 6;
-            
-            if (/\/download\//i.test(lower)) return 7;
+        function getPriority(item) {
+            const lower = item.link.toLowerCase();
+            if (lower.includes('pagalworld')) return 2;
+            if (lower.includes('raagmad')) return 3;
+            if (lower.includes('jio')) return 4;
+            if (/\/download\/type/i.test(lower)) return 5;
+            if (/\/download\//i.test(lower)) return 6;
             return 7;
         }
         uniqueLinks = uniqueLinks.sort((a, b) => getPriority(a) - getPriority(b));
@@ -130,9 +133,8 @@ app.get('/search-song', async (req, res) => {
 
 
         if (results.length === 0) {
-            return res.status(404).json({ results: [] });
+            return res.status(404).json({ total: 0, results: [] });
         }
-
         res.json({ total: results.length, results });
     } catch (err) {
         res.status(500).json({ error: err.message || 'Internal server error.' });
