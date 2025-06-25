@@ -45,8 +45,8 @@ async function searchAndScrapeAudioLinks(query) {
         });
         console.log('DuckDuckGo real result links:', resultLinks);
         const audioLinks = [];
-        for (let i = 0; i < resultLinks.length; i++) {
-            const url = resultLinks[i];
+        // Parallel fetching of all result links
+        await Promise.all(resultLinks.map(async (url) => {
             try {
                 const page = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
                 const $$ = cheerio.load(page.data);
@@ -67,8 +67,6 @@ async function searchAndScrapeAudioLinks(query) {
                                 ahref = new URL(ahref, url).href;
                             } catch (e) { }
                         }
-
-                        // pageTitle.
                         audioLinks.push({ link: ahref, title: pageTitle });
                     }
                 });
@@ -94,7 +92,7 @@ async function searchAndScrapeAudioLinks(query) {
             } catch (err) {
                 console.log('Error scraping', url, err.message);
             }
-        }
+        }));
         const seen = new Set();
         let uniqueLinks = audioLinks.filter(item => {
             if (seen.has(item.link)) return false;
@@ -110,13 +108,13 @@ async function searchAndScrapeAudioLinks(query) {
             if (lower.includes('jio')) return 4;
             if (/\/download\/type/i.test(lower)) return 5;
             if (/\/download\//i.test(lower)) return 6;
-            if(lower.includes('.mp4')) return 7;
-            if(lower.includes('.mp3')) return 8;
-            if(lower.includes('.m4a')) return 9;
-            if(lower.includes('.ogg')) return 10;
-            if(lower.includes('archive.org')) return 11;
+            if (lower.includes('.mp4')) return 7;
+            if (lower.includes('.mp3')) return 8;
+            if (lower.includes('.m4a')) return 9;
+            if (lower.includes('.ogg')) return 10;
+            if (lower.includes('archive.org')) return 11;
             if (lower.includes('.html')) return 1980;
-            if(lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.png')) return 19900;
+            if (lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.png')) return 19900;
 
             return 7;
         }
