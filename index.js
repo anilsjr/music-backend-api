@@ -24,7 +24,7 @@ function extractRealUrl(duckUrl) {
 
 // Helper function to search and scrape for audio links (mp3, mp4, m4a) from search results
 async function searchAndScrapeAudioLinks(query) {
-    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query + ' song ' + ' mp3 mp4 m4a download')}`;
+    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query + ' song ' + ' mp3 mp4 m4a download pagalwaorld pagaiworld raagmad jio')}`;
     try {
         const { data } = await axios.get(searchUrl, {
             headers: {
@@ -50,11 +50,13 @@ async function searchAndScrapeAudioLinks(query) {
             try {
                 const page = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
                 const $$ = cheerio.load(page.data);
-                const pageTitle = $$('title').first().text() || '';
+                const pageTitle = ($$('title').first().text() || '').replace(/\b(download|pagalworld|pagaiworld|musify|jio|jiosavan|myjio|free|offblogmedia|Borrow, and Streaming : Internet Archive)\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+
                 $$('a').each((_, a) => {
                     let ahref = $$(a).attr('href');
                     if (
                         ahref &&
+                        !ahref.match(/\.html($|\?)/i) && // Exclude .html links
                         (ahref.match(/\.(mp3|mp4|m4a)($|\?)/i) ||
                             ahref.match(/\/download\/type/i) ||
                             ahref.match(/\/download\//i))
@@ -65,6 +67,8 @@ async function searchAndScrapeAudioLinks(query) {
                                 ahref = new URL(ahref, url).href;
                             } catch (e) { }
                         }
+
+                        // pageTitle.
                         audioLinks.push({ link: ahref, title: pageTitle });
                     }
                 });
@@ -73,6 +77,7 @@ async function searchAndScrapeAudioLinks(query) {
                     let src = $$(tag).attr('src');
                     if (
                         src &&
+                        !src.match(/\.html($|\?)/i) && // Exclude .html links
                         (src.match(/\.(mp3|mp4|m4a)($|\?)/i) ||
                             src.match(/\/download\/type/i) ||
                             src.match(/\/download\//i))
@@ -105,6 +110,14 @@ async function searchAndScrapeAudioLinks(query) {
             if (lower.includes('jio')) return 4;
             if (/\/download\/type/i.test(lower)) return 5;
             if (/\/download\//i.test(lower)) return 6;
+            if(lower.includes('.mp4')) return 7;
+            if(lower.includes('.mp3')) return 8;
+            if(lower.includes('.m4a')) return 9;
+            if(lower.includes('.ogg')) return 10;
+            if(lower.includes('archive.org')) return 11;
+            if (lower.includes('.html')) return 1980;
+            if(lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.png')) return 19900;
+
             return 7;
         }
         uniqueLinks = uniqueLinks.sort((a, b) => getPriority(a) - getPriority(b));
