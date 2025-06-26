@@ -20,7 +20,7 @@ function extractRealUrl(duckUrl) {
             return decodeURIComponent(match[1]);
         }
     } catch (e) {
-        console.log('Failed to extract real URL:', e.message);
+        // console.log('Failed to extract real URL:', e.message);
     }
     return null;
 }
@@ -41,15 +41,15 @@ async function searchAndScrapeAudioLinks(query) {
         // DuckDuckGo result links have class 'result__a' or are inside '.result__url'
         $('a.result__a').slice(0, 50).each((_, el) => {
             const href = $(el).attr('href');
-            if (href && !href.startsWith('/y.js')) {
+            if (href && !href.startsWith('/y.js' && (!href.includes('porn') || !href.includes('sex') || !href.includes('xxx') || !href.includes('18+')))) {
                 const realUrl = extractRealUrl(href);
                 if (realUrl) resultLinks.push(realUrl);
             }
         });
-        console.log('DuckDuckGo real result links:', resultLinks);
+        // console.log('DuckDuckGo real result links:', resultLinks);
         const audioLinks = [];
         // Limit concurrency to 5 requests at a time
-        await asyncPool(5, resultLinks, async (url) => {
+        await asyncPool(12, resultLinks, async (url) => {
             try {
                 const page = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
                 const $$ = cheerio.load(page.data);
@@ -93,7 +93,7 @@ async function searchAndScrapeAudioLinks(query) {
                     }
                 });
             } catch (err) {
-                console.log('Error scraping', url, err.message);
+                // console.log('Error scraping', url, err.message);
             }
         });
         const seen = new Set();
@@ -102,15 +102,15 @@ async function searchAndScrapeAudioLinks(query) {
             seen.add(item.link);
             return true;
         });
-        console.log('Found audio links:', uniqueLinks);
+        // console.log('Found audio links:', uniqueLinks);
         // Sort links by priority: 1. song query, 2. pagalworld, 3. raagmad, 4. jio, 5. /download/type, 6. /download/
         function getPriority(item) {
             const lower = item.link.toLowerCase();
-            if (lower.includes('pagalworld')) return 2;
+            if (lower.includes('world')) return 2;
             if (lower.includes('raagmad')) return 3;
             if (lower.includes('jio')) return 4;
             if (/\/download\/type/i.test(lower)) return 5;
-            if (/\/download\//i.test(lower)) return 6;
+            // if (/\/download\//i.test(lower)) return 6;
             if (lower.includes('.mp4')) return 7;
             if (lower.includes('.mp3')) return 8;
             if (lower.includes('.m4a')) return 9;
@@ -124,26 +124,36 @@ async function searchAndScrapeAudioLinks(query) {
         uniqueLinks = uniqueLinks.sort((a, b) => getPriority(a) - getPriority(b));
         return uniqueLinks;
     } catch (err) {
-        console.log('Failed to search or scrape results:', err.message);
+        // console.log('Failed to search or scrape results:', err.message);
         throw new Error('Failed to search or scrape results.');
     }
 }
 
 app.get('/', async (req, res) => {
-    return res.status(200).json({ msg: 'working' });
+    return res.status(200).json({ 
+        msg: '🎵 Welcome to Music App NodeJS Backend API 🎶',
+        endpoints: [
+            { path: '/search-song', description: '🔍 Search for songs by query' },
+        ],
+        author: '👤 Anil Vishwakarma'
+    });
 });
 
 app.get('/search-song', async (req, res) => {
-    console.log('inside /search-song');
+    // console.log('inside /search-song');
     const songQuery = req.query.song;
+    
     if (!songQuery) {
         return res.status(400).json({ error: 'Missing song query parameter.' });
     }
     try {
-        console.log('calling fxn searchAndScrapeAudioLinks');
+        // console.log('calling fxn searchAndScrapeAudioLinks');
 
         const results = await searchAndScrapeAudioLinks(songQuery);
+        console.log('========================================');
         console.log('result length: ' + results.length);
+        console.log('========================================');
+
 
 
         if (results.length === 0) {
